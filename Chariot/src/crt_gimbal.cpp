@@ -14,6 +14,7 @@
 #include "crt_gimbal.hpp"
 #include "tsk_isr.hpp"
 #include "drv_misc.h"
+#include <math.h>
 
 /* Typedef -------------------------------------------------------------------*/
 
@@ -31,7 +32,7 @@
  *                            Gimbal类实现
  ******************************************************************************/
 
-Gimbal::Gimbal(MotorDM4310 *yawMotor, MotorDM4310 *pitchMotor, MotorM2006 *rammerMotor, MotorM3508 *frictionLeftMotor, MotorM3508 *frictionRightMotor, IMU *imu)
+Gimbal::Gimbal(MotorGM6020 *yawMotor, MotorDM4310 *pitchMotor, MotorM2006 *rammerMotor, MotorM3508 *frictionLeftMotor, MotorM3508 *frictionRightMotor, IMU *imu)
     : m_yawMotor(yawMotor), m_pitchMotor(pitchMotor),
       m_rammerMotor(rammerMotor), m_frictionLeftMotor(frictionLeftMotor), m_frictionRightMotor(frictionRightMotor),
       m_imu(imu),
@@ -136,7 +137,7 @@ void Gimbal::targetOrientationPlan()
     switch (m_gimbalMode) {
         case MANUAL_CONTROL:
             setYawAngle(m_yawTargetAngle - rcStickDeadZoneFilter(m_remoteControl.getRightStickX()) * DT7_STICK_YAW_SENSITIVITY);
-            setPitchAngle(m_pitchTargetAngle + rcStickDeadZoneFilter(m_remoteControl.getRightStickY()) * DT7_STICK_PITCH_SENSITIVITY);
+            setPitchAngle(m_pitchTargetAngle - rcStickDeadZoneFilter(m_remoteControl.getRightStickY()) * DT7_STICK_PITCH_SENSITIVITY);
             break;
 
         case AUTO_CONTROL:
@@ -167,25 +168,24 @@ void Gimbal::targetSpeedPlan()
 
 void Gimbal::shootPlan()
 {
-    switch (m_gimbalMode)
-    {
-    case MANUAL_CONTROL:
-        if (m_remoteControl.getLeftSwitchEvent() == Dr16RemoteControl::SWITCH_TOGGLE_MIDDLE_UP) {
-            m_frictionState = !m_frictionState;
-        }
+    switch (m_gimbalMode) {
+        case MANUAL_CONTROL:
+            if (m_remoteControl.getLeftSwitchEvent() == Dr16RemoteControl::SWITCH_TOGGLE_MIDDLE_UP) {
+                m_frictionState = !m_frictionState;
+            }
 
-        if ((m_remoteControl.getLeftSwitchStatus() == Dr16RemoteControl::SWITCH_DOWN) && m_frictionState && (m_leftShooterHeat < 350)) {
-            m_rammerState = true;
-        } else {
-            m_rammerState = false;
-        }
-        break;
+            if ((m_remoteControl.getLeftSwitchStatus() == Dr16RemoteControl::SWITCH_DOWN) && m_frictionState && (m_leftShooterHeat < 350)) {
+                m_rammerState = true;
+            } else {
+                m_rammerState = false;
+            }
+            break;
 
-    case AUTO_CONTROL:
-        break;
-    
-    default:
-        break;
+        case AUTO_CONTROL:
+            break;
+
+        default:
+            break;
     }
 }
 
@@ -202,7 +202,13 @@ void Gimbal::pitchControl()
         case MANUAL_CONTROL:
         case AUTO_CONTROL: { // 手动控制和自动控制都使用同样的闭环控制
             fp32 fdbData[2] = {GSRLMath::normalizeDeltaAngle(m_pitchTargetAngle - m_eulerAngle.y), -m_imu->getGyro().y};
-            m_pitchMotor->externalClosedloopControl(0.0f, fdbData, 2);
+            fp32 pidOutput = m_pitchMotor->externalClosedloopControl(0.0f, fdbData, 2);
+#ifdef PITCH_GRAVITY_COMPENSATE
+            fp32 totalTorque = gravityCompensate(pidOutput, m_pitchMotor->getCurrentAngle(), PITCH_GRAVITY_COMPENSATE);
+            m_pitchMotor->openloopControl(totalTorque);
+#else
+            (void)pidOutput; // 防止未使用变量警告
+#endif
             break;
         }
 
@@ -220,12 +226,12 @@ void Gimbal::yawControl()
             break;
 
         case CALIBRATION:
-            m_yawMotor->setMotorZeroPosition();
+            // m_yawMotor->setMotorZeroPosition();
             break;
 
         case MANUAL_CONTROL:
         case AUTO_CONTROL: { // 手动控制和自动控制都使用同样的闭环控制
-            fp32 fdbData[2] = {GSRLMath::normalizeDeltaAngle(m_eulerAngle.z - m_yawTargetAngle), m_imu->getGyro().z};
+            fp32 fdbData[2] = {GSRLMath::normalizeDeltaAngle(m_yawTargetAngle - m_eulerAngle.z), m_imu->getGyro().z};
             m_yawMotor->externalClosedloopControl(0.0f, fdbData, 2);
             break;
         }
@@ -247,8 +253,8 @@ void Gimbal::shootControl()
     }
 
     if (m_frictionState) {
-        m_frictionLeftMotor->angularVelocityClosedloopControl(-FRICTION_TARGET_ANGULAR_VELOCITY);
-        m_frictionRightMotor->angularVelocityClosedloopControl(FRICTION_TARGET_ANGULAR_VELOCITY);
+        m_frictionLeftMotor->angularVelocityClosedloopControl(FRICTION_TARGET_ANGULAR_VELOCITY);
+        m_frictionRightMotor->angularVelocityClosedloopControl(-FRICTION_TARGET_ANGULAR_VELOCITY);
     } else {
         m_frictionLeftMotor->angularVelocityClosedloopControl(0.0f);
         m_frictionRightMotor->angularVelocityClosedloopControl(0.0f);
@@ -264,35 +270,34 @@ void Gimbal::shootControl()
 
 void Gimbal::rammerStuckControl()
 {
-    static uint8_t rammerStuckState = 0; // 0: 正常 1: 疑似卡弹 2: 证实卡弹
+    static uint8_t rammerStuckState          = 0; // 0: 正常 1: 疑似卡弹 2: 证实卡弹
     volatile static uint32_t rammerStuckTime = 0;
-    switch (rammerStuckState)
-    {
-    case 0: // 正常
-        if (abs(m_rammerMotor->getCurrentAngularVelocity()) < 1.0f) {
-            rammerStuckTime = DWT->CYCCNT; // 获取当前时间戳
-            rammerStuckState = 1;
-        }
-        break;
+    switch (rammerStuckState) {
+        case 0: // 正常
+            if (abs(m_rammerMotor->getCurrentAngularVelocity()) < 1.0f) {
+                rammerStuckTime  = DWT->CYCCNT; // 获取当前时间戳
+                rammerStuckState = 1;
+            }
+            break;
 
-    case 1: // 疑似卡弹
-        if (abs(m_rammerMotor->getCurrentAngularVelocity()) > 1.0f) {
-            rammerStuckState = 0; // 解除卡弹状态
-        } else if (((uint32_t)(DWT->CYCCNT - rammerStuckTime)) / ((fp32)(SystemCoreClock)) > RAMMER_STUCK_TIMEOUT) {
-            rammerStuckTime = DWT->CYCCNT; // 获取当前时间戳
-            rammerStuckState = 2;
-        }
-        break;
+        case 1: // 疑似卡弹
+            if (abs(m_rammerMotor->getCurrentAngularVelocity()) > 1.0f) {
+                rammerStuckState = 0; // 解除卡弹状态
+            } else if (((uint32_t)(DWT->CYCCNT - rammerStuckTime)) / ((fp32)(SystemCoreClock)) > RAMMER_STUCK_TIMEOUT) {
+                rammerStuckTime  = DWT->CYCCNT; // 获取当前时间戳
+                rammerStuckState = 2;
+            }
+            break;
 
-    case 2: // 证实卡弹
-        m_rammerMotor->angularVelocityClosedloopControl(RAMMER_STUCK_REVERT_ANGULAR_VELOCITY);
-        if (((uint32_t)(DWT->CYCCNT - rammerStuckTime)) / ((fp32)(SystemCoreClock)) > RAMMER_REVERT_TIME) {
-            rammerStuckState = 0; // 解除卡弹状态
-        }
-        break;
-    
-    default:
-        break;
+        case 2: // 证实卡弹
+            m_rammerMotor->angularVelocityClosedloopControl(RAMMER_STUCK_REVERT_ANGULAR_VELOCITY);
+            if (((uint32_t)(DWT->CYCCNT - rammerStuckTime)) / ((fp32)(SystemCoreClock)) > RAMMER_REVERT_TIME) {
+                rammerStuckState = 0; // 解除卡弹状态
+            }
+            break;
+
+        default:
+            break;
     }
 }
 
@@ -325,10 +330,9 @@ void Gimbal::chassisControl()
 
 void Gimbal::transmitGimbalMotorData()
 {
-    HAL_CAN_AddTxMessage(&hcan1, m_yawMotor->getMotorControlHeader(), m_yawMotor->getMotorControlData(), NULL);
-    HAL_CAN_AddTxMessage(&hcan1, m_pitchMotor->getMotorControlHeader(), m_pitchMotor->getMotorControlData(), NULL);
-    HAL_CAN_AddTxMessage(&hcan2, m_rammerMotor->getMotorControlHeader(), m_rammerMotor->getMotorControlData(), NULL);
-    HAL_CAN_AddTxMessage(&hcan2, m_frictionLeftMotor->getMotorControlHeader(), (*m_frictionLeftMotor + *m_frictionRightMotor).getMotorControlData(), NULL);
+    HAL_CAN_AddTxMessage(&hcan2, m_yawMotor->getMotorControlHeader(), (*m_yawMotor + *m_rammerMotor).getMotorControlData(), NULL);
+    HAL_CAN_AddTxMessage(&hcan2, m_pitchMotor->getMotorControlHeader(), m_pitchMotor->getMotorControlData(), NULL);
+    HAL_CAN_AddTxMessage(&hcan1, m_frictionLeftMotor->getMotorControlHeader(), (*m_frictionLeftMotor + *m_frictionRightMotor).getMotorControlData(), NULL);
 }
 
 void Gimbal::transmitChassisData()
@@ -386,4 +390,16 @@ inline fp32 Gimbal::rcStickDeadZoneFilter(const fp32 &rcStickValue)
         return (rcStickValue + DT7_STICK_DEAD_ZONE) / (1.0f - DT7_STICK_DEAD_ZONE);
     else
         return 0.0f;
+}
+
+/**
+ * @brief 重力前馈补偿计算
+ * @param baseTorque 基础力矩(PID输出)
+ * @param currentAngle 当前角度(rad)
+ * @param compensateCoeff 补偿系数(Nm)
+ * @return 叠加前馈后的总力矩
+ */
+inline fp32 Gimbal::gravityCompensate(fp32 baseTorque, fp32 currentAngle, fp32 compensateCoeff)
+{
+    return baseTorque + compensateCoeff * cos(currentAngle);
 }

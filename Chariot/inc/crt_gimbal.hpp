@@ -42,7 +42,7 @@ public:
 
 private:
     // 电机
-    MotorDM4310 *m_yawMotor;
+    MotorGM6020 *m_yawMotor;
     MotorDM4310 *m_pitchMotor;
     MotorM2006 *m_rammerMotor;
     MotorM3508 *m_frictionLeftMotor;
@@ -79,7 +79,7 @@ private:
     uint16_t m_currentHP;
 
 public:
-    Gimbal(MotorDM4310 *yawMotor, MotorDM4310 *pitchMotor, MotorM2006 *rammerMotor, MotorM3508 *frictionLeftMotor, MotorM3508 *frictionRightMotor, IMU *imu);
+    Gimbal(MotorGM6020 *yawMotor, MotorDM4310 *pitchMotor, MotorM2006 *rammerMotor, MotorM3508 *frictionLeftMotor, MotorM3508 *frictionRightMotor, IMU *imu);
     void init();
     void controlLoop();
     void imuLoop();
@@ -99,10 +99,12 @@ private:
     void chassisControl();
     void transmitGimbalMotorData();
     void transmitChassisData();
+
     inline void setPitchAngle(const fp32 &targetAngle);
     inline void setYawAngle(const fp32 &targetAngle);
     inline void convertGimbalTargetSpeedToChassisTargetSpeed();
     inline fp32 rcStickDeadZoneFilter(const fp32 &rcStickValue);
+    inline fp32 gravityCompensate(fp32 baseTorque, fp32 currentAngle, fp32 compensateCoeff);
 };
 
 /* Exported constants --------------------------------------------------------*/
