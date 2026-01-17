@@ -27,31 +27,31 @@
  *                            PID参数
  ******************************************************************************/
 // 云台Yaw电机 (GM6020)
-#define YAW_OUTER_KP                  4.0f  
-#define YAW_OUTER_KI                  0.0f
-#define YAW_OUTER_KD                  0.0f
-#define YAW_OUTER_OUT_LIMIT           20.0f
-#define YAW_OUTER_IOUT_LIMIT          0.0f
-#define YAW_INNER_KP                  1000.0f 
-#define YAW_INNER_KI                  2.0f   
-#define YAW_INNER_KD                  3.0f   
-#define YAW_INNER_OUT_LIMIT           25000.0f 
-#define YAW_INNER_IOUT_LIMIT          10000.0f
-#define YAW_INNER_LOWPASS_FILTER_PARA 0.8f
+#define YAW_OUTER_KP                  40.0f    // 40.0f
+#define YAW_OUTER_KI                  0.0f     // 0.0f
+#define YAW_OUTER_KD                  300.0f   // 300.0f
+#define YAW_OUTER_OUT_LIMIT           5000.0f  // 5000.0f
+#define YAW_OUTER_IOUT_LIMIT          0.0f     // 0.0f
+#define YAW_INNER_KP                  7000.0f  // 7000.0f
+#define YAW_INNER_KI                  0.0f     // 0.0f
+#define YAW_INNER_KD                  250.0f   // 250.0f
+#define YAW_INNER_OUT_LIMIT           25000.0f // 25000.0f
+#define YAW_INNER_IOUT_LIMIT          10000.0f // 10000.0f
+#define YAW_INNER_LOWPASS_FILTER_PARA 0.4f     // 0.4f
 // 云台Pitch电机
-#define PITCH_OUTER_KP                  1.0f // 外环
+#define PITCH_OUTER_KP                  4.5f // 外环
 #define PITCH_OUTER_KI                  0.0f
 #define PITCH_OUTER_KD                  0.0f
 #define PITCH_OUTER_OUT_LIMIT           10.0f
 #define PITCH_OUTER_IOUT_LIMIT          0.5f
-#define PITCH_INNER_KP                  -3.0f // 内环
-#define PITCH_INNER_KI                  -0.0f
-#define PITCH_INNER_KD                  -0.0f
+#define PITCH_INNER_KP                  2.5f // 内环
+#define PITCH_INNER_KI                  0.0f
+#define PITCH_INNER_KD                  0.0f
 #define PITCH_INNER_OUT_LIMIT           10.0f
 #define PITCH_INNER_IOUT_LIMIT          0.0f
 #define PITCH_INNER_LOWPASS_FILTER_PARA 0.9f
-//重力补偿前馈（Nm）
-#define PITCH_GRAVITY_COMPENSATE        0.6f
+// 重力补偿前馈（Nm）
+#define PITCH_GRAVITY_COMPENSATE 0.6f
 // 底盘跟随
 #define CHASSIS_FOLLOW_KP 2.0f
 // 摩擦轮
@@ -73,7 +73,7 @@
 // Mahony算法参数
 #define AHRS_AUTO_FREQ      0
 #define AHRS_DEFAULT_FILTER 0
-#define MAHONY_KP           0.8f
+#define MAHONY_KP           1.0f
 #define MAHONY_KI           0.0f
 // IMU零飘补偿
 #define GYRO_OFFSET_X  0.0f
@@ -86,20 +86,21 @@
 #define MAG_OFFSET_Y   0.0f
 #define MAG_OFFSET_Z   0.0f
 // 安装朝向修正旋转矩阵
-#define INSTALL_SPIN_MATRIX GSRLMath::Matrix33f::MatrixType::IDENTITY
+#define INSTALL_SPIN_MATRIX GSRLMath::Matrix33f((fp32[3][3]){{0, 1, 0}, {1, 0, 0}, {0, 0, -1}})
+// #define INSTALL_SPIN_MATRIX GSRLMath::Matrix33f::MatrixType::IDENTITY
 
 /******************************************************************************
  *                            遥控器灵敏度与死区
  ******************************************************************************/
 #define DT7_STICK_DEAD_ZONE         0.20f
-#define DT7_STICK_PITCH_SENSITIVITY 0.02f
-#define DT7_STICK_YAW_SENSITIVITY   0.02f
+#define DT7_STICK_PITCH_SENSITIVITY 0.04f
+#define DT7_STICK_YAW_SENSITIVITY   0.018f
 
 /******************************************************************************
  *                            云台角度限制
  ******************************************************************************/
-#define PITCH_UPPER_LIMIT 0.2f
-#define PITCH_LOWER_LIMIT -0.35f
+#define PITCH_UPPER_LIMIT 0.65f
+#define PITCH_LOWER_LIMIT -0.40f
 /******************************************************************************
  *                            发射机构参数
  ******************************************************************************/

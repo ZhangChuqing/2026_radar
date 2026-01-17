@@ -76,7 +76,7 @@ SimplePID rammerPID(SimplePID::PID_POSITION, rammerPIDParam);
 
 
 MotorGM6020 yawMotor(1, &yawPID, 7031);
-MotorDM4310 pitchMotor(3, 6, 3.141593f, 30, 10, &pitchPID);
+MotorDM4310 pitchMotor(1, 4, 3.141593f, 30, 10, &pitchPID);
 MotorM2006 rammerMotor(7, &rammerPID, 0, 36);
 MotorM3508 leftFrictionMotor(1, &leftFrictionPID);
 MotorM3508 rightFrictionMotor(2, &rightFrictionPID);
@@ -111,6 +111,6 @@ extern "C" void gimbal_task(void *argument)
     gimbal.init();
     while (1) {
         gimbal.controlLoop();
-        vTaskDelayUntil(&taskLastWakeTime, 5); // 确保任务以定周期5ms运行
+        vTaskDelayUntil(&taskLastWakeTime, 1); // 确保任务以定周期1ms运行
     }
 }

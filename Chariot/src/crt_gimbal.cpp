@@ -152,10 +152,10 @@ void Gimbal::targetSpeedPlan()
 {
     switch (m_gimbalMode) {
         case MANUAL_CONTROL:
-            m_gimbalTargetSpeed.x = rcStickDeadZoneFilter(m_remoteControl.getLeftStickX());
-            m_gimbalTargetSpeed.y = rcStickDeadZoneFilter(m_remoteControl.getLeftStickY());
+            m_gimbalTargetSpeed.x = m_remoteControl.getLeftStickX();
+            m_gimbalTargetSpeed.y = m_remoteControl.getLeftStickY();
             if (m_chassisMode == NO_FOLLOW)
-                m_gimbalTargetSpeed.z = rcStickDeadZoneFilter(m_remoteControl.getScrollWheel());
+                m_gimbalTargetSpeed.z = m_remoteControl.getScrollWheel();
             break;
 
         case AUTO_CONTROL:
