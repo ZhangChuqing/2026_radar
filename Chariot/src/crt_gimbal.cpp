@@ -32,7 +32,7 @@
  *                            Gimbal类实现
  ******************************************************************************/
 
-extern Vofa<4> vofa;
+extern Vofa<12> vofa;
 
 Gimbal::Gimbal(MotorDM4310 *yawMotor, MotorDM4310 *pitchMotor, IMU *imu)
     : m_yawMotor(yawMotor), m_pitchMotor(pitchMotor),
