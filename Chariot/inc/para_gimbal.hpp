@@ -49,7 +49,7 @@
 #define PITCH_OUTER_KD                  0.0f
 #define PITCH_OUTER_OUT_LIMIT           1.0f
 #define PITCH_OUTER_IOUT_LIMIT          0.0f
-#define PITCH_INNER_KP                  1.475f // 内环
+#define PITCH_INNER_KP                  1.48f // 内环
 #define PITCH_INNER_KI                  0.0f
 #define PITCH_INNER_KD                  0.15f
 #define PITCH_INNER_OUT_LIMIT           10.0f

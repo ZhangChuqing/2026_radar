@@ -56,7 +56,7 @@ CascadePID pitchPID(pitchOuterParam, pitchInnerParam, nullptr, &pitchInnerLPF);
 MotorDM4310 yawMotor(2, 4, 3.141593f, 10, 5, &yawPID);
 MotorDM4310 pitchMotor(1, 3, 3.141593f, 10, 5, &pitchPID);
 
-Vofa<4> vofa;
+Vofa<12> vofa;
 
 
 
@@ -88,15 +88,62 @@ extern "C" void gimbal_task(void *argument)
 {
     TickType_t taskLastWakeTime = xTaskGetTickCount(); // 获取任务开始时间
     gimbal.init();
+            vofa.AddParameterListener("IP", [](fp32 *newdata) { 
+            pitchInnerParam.Kp = *newdata;
+            pitchPID.getInnerLoop().pidSetParam(pitchInnerParam);
+
+        });
+        //补全PID INNER ORTER
+        vofa.AddParameterListener("II", [](fp32 *newdata) { 
+            pitchInnerParam.Ki = *newdata;
+            pitchPID.getInnerLoop().pidSetParam(pitchInnerParam);
+        });
+        vofa.AddParameterListener("ID", [](fp32 *newdata) { 
+            pitchInnerParam.Kd = *newdata;
+            pitchPID.getInnerLoop().pidSetParam(pitchInnerParam);
+        });
+        vofa.AddParameterListener("IOUT", [](fp32 *newdata) { 
+            pitchInnerParam.outputLimit = *newdata;
+            pitchPID.getInnerLoop().pidSetParam(pitchInnerParam);
+        });
+        vofa.AddParameterListener("IINT", [](fp32 *newdata) { 
+            pitchInnerParam.intergralLimit = *newdata;
+            pitchPID.getInnerLoop().pidSetParam(pitchInnerParam);
+        });
+        vofa.AddParameterListener("OP", [](fp32 *newdata) { 
+            pitchOuterParam.Kp = *newdata;
+            pitchPID.getOuterLoop().pidSetParam(pitchOuterParam);
+        });
+        vofa.AddParameterListener("OI", [](fp32 *newdata) { 
+            pitchOuterParam.Ki = *newdata;
+            pitchPID.getOuterLoop().pidSetParam(pitchOuterParam);
+        });
+        vofa.AddParameterListener("OD", [](fp32 *newdata) { 
+            pitchOuterParam.Kd = *newdata;
+            pitchPID.getOuterLoop().pidSetParam(pitchOuterParam);
+        });
+        vofa.AddParameterListener("OOUT", [](fp32 *newdata) { 
+            pitchOuterParam.outputLimit = *newdata;
+            pitchPID.getOuterLoop().pidSetParam(pitchOuterParam);
+        });
+        vofa.AddParameterListener("OINT", [](fp32 *newdata) { 
+            pitchOuterParam.intergralLimit = *newdata;
+            pitchPID.getOuterLoop().pidSetParam(pitchOuterParam);
+        });
     pitchMotor.setControllerOutputPolarity(true); // 设置Pitch电机控制器输出极性为正（根据实际情况调整）
     while (1) {
-        // gimbal.controlLoop();
-        // vofa.writeData(pitchPID.getOuterLoop().pidGetData().output);
-        // vofa.writeData(pitchPID.getInnerLoop().pidGetData().output);
-        // vofa.writeData(pitchMotor.getCurrentAngle());
-        // vofa.writeData(gimbal.m_pitchTargetAngle());
-        // vofa.writeData(yawMotor.getCurrentAngle());
-        // vofa.writeData(gimbal.m_yawTargetAngle());
+        gimbal.controlLoop();
+        vofa.writeData(pitchPID.getOuterLoop().pidGetData().output);
+        vofa.writeData(pitchPID.getInnerLoop().pidGetData().output);
+        vofa.writeData(pitchMotor.getCurrentAngle());
+        vofa.writeData(pitchPID.getOuterLoop().pidGetData().pOut);
+        vofa.writeData(pitchPID.getOuterLoop().pidGetData().iOut);
+        vofa.writeData(pitchPID.getOuterLoop().pidGetData().dOut);
+        vofa.writeData(pitchPID.getInnerLoop().pidGetData().pOut);
+        vofa.writeData(pitchPID.getInnerLoop().pidGetData().iOut);
+        vofa.writeData(pitchPID.getInnerLoop().pidGetData().dOut);
+
+
         vofa.sendFrame();
         vTaskDelayUntil(&taskLastWakeTime, 1); // 确保任务以定周期1ms运行
     }
