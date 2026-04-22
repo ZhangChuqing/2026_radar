@@ -5,7 +5,7 @@
  ******************************************************************************
  * @attention
  *
- * Copyright (c) 2025 GMaster
+ * Copyright (c) 2026 GMaster
  * All rights reserved.
  *
  ******************************************************************************
@@ -118,11 +118,12 @@ protected:
     uint8_t m_djiMotorID;         // 大疆电机ID，6020电机对应1~7
     uint16_t m_encoderHistory[2]; // 0:当前值 1:上一次值
     int16_t m_currentRPMSpeed;    // RPM
+    uint8_t m_mergedData[8];      // getMergedControlData 输出缓冲区
 
 public:
     MotorGM6020(uint8_t dji6020MotorID, Controller *controller, uint16_t encoderOffset = 0);
     uint8_t getDjiMotorID() const;
-    MotorGM6020 operator+(const MotorGM6020 &otherMotor) const;
+    const uint8_t *getMergedControlData(MotorGM6020 &otherMotor);
 
 protected:
     bool decodeCanRxMessage(const can_rx_message_t &rxMessage) override;
@@ -146,15 +147,15 @@ protected:
 };
 
 /**
- * @brief M2006电机别名
- * @details M2006电机控制逻辑与M3508电机相同
+ * @brief M2006电机类型别名
+ * @note 复用M3508的CAN通信协议和控制方法
  */
 using MotorM2006 = MotorM3508;
 
 /**
  * @brief 达妙DMJ4310电机类
  * @note 请使用达妙电机默认固件，本类基于MIT模式单力矩输出控制帧，其余计算(如PID)在stm32上实现
- * @note 使用前先用达妙电机调试助手查看电机驱动板的PMAX、VMAX、TMAX参数，确保控制板与代码中的参数一致，否则会导致数据解包错误
+ * @note 使用前先用达妙电机调试助手查看电机驱动板的PMAX、VMAX、TMAX参数，确保控制板与构造函数中的参数一致，否则会导致数据解包错误
  * @note 请将PMAX值设置位PI(3.1415926), 请将PMAX值设置位PI(3.141593), 重要！！！
  * @note 建议合理设置电机CANTimeout, 以避免电机掉线不受控, 本类会在电机重连后自动清除错误状态并使能电机
  * @details 该类实现了Motor类的纯虚函数，用于控制达妙4310电机
@@ -185,6 +186,43 @@ protected:
 public:
     MotorDM4310(uint8_t dmControlID, uint8_t dmMasterID, fp32 pmax, fp32 vmax, fp32 tmax, Controller *controller);
     void setMotorZeroPosition();
+
+protected:
+    bool decodeCanRxMessage(const can_rx_message_t &rxMessage) override;
+    void convertControllerOutputToMotorControlData() override;
+};
+
+/**
+ * @brief 达妙DM-S2325-1EC电机类型别名
+ * @note 复用DMJ4310的MIT控制协议
+ * @note 使用前先用达妙电机调试助手查看电机驱动板的PMAX、VMAX、TMAX参数，确保控制板与构造函数中的参数一致，否则会导致数据解包错误
+ * @note 请将PMAX值设置位PI(3.1415926), 请将PMAX值设置位PI(3.141593), 重要！！！
+ * @note 建议合理设置电机CANTimeout, 以避免电机掉线不受控, 本类会在电机重连后自动清除错误状态并使能电机
+ */
+using MotorDM2325 = MotorDM4310;
+
+/**
+ * @brief 达妙一控四固件电机类
+ * @details 该类实现了Motor类的纯虚函数，用于控制达妙"一控四"固件下的电机
+ * @details 与大疆GM6020的一控多模式类似，同一条控制帧上可承载4个电机的控制电流
+ * @note 控制帧: 电机ID 1~4 -> 0x3FE, 电机ID 5~8 -> 0x4FE, 数据段为小端字节序
+ * @note 反馈帧: 反馈ID = 0x300 + 电机ID, 数据段为大端字节序
+ * @note 控制电流为标幺值，含义参见达妙力位混控模式中的 i_des 说明
+ */
+class MotorDMmulti : public Motor
+{
+protected:
+    uint8_t m_dmMotorID;          // 达妙电机ID [1,8]
+    uint16_t m_encoderHistory[2]; // 0:当前值 1:上一次值
+    int16_t m_currentRPMSpeed;    // 电机速度, 单位RPM(已除以100后的真实值)
+    uint8_t m_errorState;         // 反馈帧D[7]错误状态字节, 具体含义详见达妙错误状态说明书
+    uint8_t m_mergedData[8];      // getMergedControlData 输出缓冲区
+
+public:
+    MotorDMmulti(uint8_t dmMotorID, Controller *controller, uint16_t encoderOffset = 0);
+    uint8_t getDmMotorID() const;
+    uint8_t getErrorState() const;
+    const uint8_t *getMergedControlData(MotorDMmulti &otherMotor);
 
 protected:
     bool decodeCanRxMessage(const can_rx_message_t &rxMessage) override;

@@ -5,7 +5,7 @@
  ******************************************************************************
  * @attention
  *
- * Copyright (c) 2025 GMaster
+ * Copyright (c) 2026 GMaster
  * All rights reserved.
  *
  ******************************************************************************
@@ -67,10 +67,8 @@ void Gimbal::targetOrientationPlan()
 {
     switch (m_gimbalMode) {
         case MANUAL_CONTROL:
-            // setYawAngle(m_yawTargetAngle - rcStickDeadZoneFilter(m_remoteControl.getRightStickX()) * DT7_STICK_YAW_SENSITIVITY*0.1f);//0.6为遥控器灵敏度精度经检查无法精确到小数点后三位，故再加神秘小常数
-            // setPitchAngle(m_pitchTargetAngle - rcStickDeadZoneFilter(m_remoteControl.getRightStickY()) * DT7_STICK_PITCH_SENSITIVITY*0.1f);//0.6为遥控器灵敏度精度经检查无法精确到小数点后三位，故再加神秘小常数
-             setYawAngle( -rcStickDeadZoneFilter(m_remoteControl.getRightStickX()) * YAW_UPPER_LIMIT);
-             setPitchAngle( -rcStickDeadZoneFilter(m_remoteControl.getRightStickY()) * PITCH_UPPER_LIMIT);
+             setYawAngle( m_yawTargetAngle + rcStickDeadZoneFilter(m_remoteControl.getRightStickX()) * YAW_UPPER_LIMIT);
+             setPitchAngle( m_pitchTargetAngle + rcStickDeadZoneFilter(m_remoteControl.getRightStickY()) * PITCH_UPPER_LIMIT);
             break;
 
         case AUTO_CONTROL:
@@ -108,18 +106,18 @@ void Gimbal::modeSelect()
     }
 
     switch (m_remoteControl.getRightSwitchStatus()) {
-        case Dr16RemoteControl::SwitchStatus3Pos::SWITCH_DOWN:
+        case DR16RemoteControl::SwitchStatus3Pos::SWITCH_DOWN:
             m_gimbalMode  = GIMBAL_NO_FORCE;
-            if (m_remoteControl.getLeftSwitchEvent() == Dr16RemoteControl::SwitchEvent3Pos::SWITCH_TOGGLE_MIDDLE_UP) {
+            if (m_remoteControl.getLeftSwitchEvent() == DR16RemoteControl::SwitchEvent3Pos::SWITCH_TOGGLE_MIDDLE_UP) {
                 m_gimbalMode = CALIBRATION;
             }
             break;
 
-        case Dr16RemoteControl::SwitchStatus3Pos::SWITCH_MIDDLE:
+        case DR16RemoteControl::SwitchStatus3Pos::SWITCH_MIDDLE:
             m_gimbalMode  = MANUAL_CONTROL;
             break;
 
-        case Dr16RemoteControl::SwitchStatus3Pos::SWITCH_UP:
+        case DR16RemoteControl::SwitchStatus3Pos::SWITCH_UP:
             m_gimbalMode  = AUTO_CONTROL;
             break;
 
@@ -128,13 +126,13 @@ void Gimbal::modeSelect()
     }
 
     switch (m_remoteControl.getLeftSwitchStatus()) {
-        case Dr16RemoteControl::SwitchStatus3Pos::SWITCH_DOWN:
+        case DR16RemoteControl::SwitchStatus3Pos::SWITCH_DOWN:
             break;
 
-        case Dr16RemoteControl::SwitchStatus3Pos::SWITCH_MIDDLE:
+        case DR16RemoteControl::SwitchStatus3Pos::SWITCH_MIDDLE:
             break;
 
-        case Dr16RemoteControl::SwitchStatus3Pos::SWITCH_UP:
+        case DR16RemoteControl::SwitchStatus3Pos::SWITCH_UP:
             m_gimbalMode = GIMBAL_LOCK;
             break;
 
@@ -159,16 +157,7 @@ void Gimbal::pitchControl()
             vofa.writeData(m_pitchMotor->getCurrentAngle());
             vofa.writeData(m_pitchTargetAngle);
 
-            fp32 pidOutput  = m_pitchMotor->externalClosedloopControl(-3.22f, fdbData, 2);
-
-            
-/*#ifdef PITCH_GRAVITY_COMPENSATE
-            fp32 totalTorque = gravityCompensate(pidOutput, m_pitchMotor->getCurrentAngle(), PITCH_GRAVITY_COMPENSATE);
-            m_pitchMotor->openloopControl(totalTorque);
-#else
-            (void)pidOutput; // 防止未使用变量警告
-#endif
-            break;*/
+            m_pitchMotor->externalClosedloopControl(-3.22f, fdbData, 2);
         }
 
         default:
@@ -180,18 +169,17 @@ void Gimbal::yawControl()
 {
     switch (m_gimbalMode) {
         case GIMBAL_NO_FORCE:
-            m_yawTargetAngle = m_eulerAngle.z;
             m_yawMotor->openloopControl(0.0f);
             break;
 
         case CALIBRATION:
-            // m_yawMotor->setMotorZeroPosition();
+            // m_yawMotor->setMotorZeroPosition(); //设定零点
             break;
 
         case MANUAL_CONTROL:
         case AUTO_CONTROL: { // 手动控制和自动控制都使用同样的闭环控制
-            fp32 fdbData[2] = {m_eulerAngle.z - m_yawTargetAngle, m_imu->getGyro().z};
-           fp32 pidOutput = m_yawMotor->externalClosedloopControl(0.0f, fdbData, 2);
+            fp32 fdbData[2] = {(m_yawTargetAngle - m_yawMotor->getCurrentAngle()), -m_yawMotor->getCurrentAngularVelocity()};
+            m_yawMotor->externalClosedloopControl(- 2.50f, fdbData, 2);
 
             break;
             
@@ -226,13 +214,8 @@ inline void Gimbal::setYawAngle(const fp32 &targetAngle)
         m_yawTargetAngle = YAW_LOWER_LIMIT;
     else
         m_yawTargetAngle = targetAngle;
-    // 借用normalizeDeltaAngle函数将目标角度限制在-PI到PI之间
-    // m_yawTargetAngle = GSRLMath::normalizeDeltaAngle(targetAngle);
 }
 
-inline void Gimbal::convertGimbalTargetSpeedToChassisTargetSpeed()
-{
-}
 
 inline fp32 Gimbal::rcStickDeadZoneFilter(const fp32 &rcStickValue)
 {
@@ -242,16 +225,4 @@ inline fp32 Gimbal::rcStickDeadZoneFilter(const fp32 &rcStickValue)
         return (rcStickValue + DT7_STICK_DEAD_ZONE) / (1.0f - DT7_STICK_DEAD_ZONE);
     else
         return 0.0f;
-}
-
-/**
- * @brief 重力前馈补偿计算
- * @param baseTorque 基础力矩(PID输出)
- * @param currentAngle 当前角度(rad)
- * @param compensateCoeff 补偿系数(Nm)
- * @return 叠加前馈后的总力矩
- */
-inline fp32 Gimbal::gravityCompensate(fp32 baseTorque, fp32 currentAngle, fp32 compensateCoeff)
-{
-    return baseTorque + compensateCoeff * cos(currentAngle);
 }

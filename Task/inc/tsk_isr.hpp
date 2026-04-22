@@ -5,7 +5,7 @@
  ******************************************************************************
  * @attention
  *
- * Copyright (c) 2025 GMaster
+ * Copyright (c) 2026 GMaster
  * All rights reserved.
  *
  ******************************************************************************
@@ -22,4 +22,4 @@ extern "C" {
 void dr16RxCallback(uint8_t *Buffer, uint16_t Length);
 void can1RxCallback(can_rx_message_t *pRxMsg);
 void can2RxCallback(can_rx_message_t *pRxMsg);
-} // extern "C"
+} 

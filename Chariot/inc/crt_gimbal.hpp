@@ -5,7 +5,7 @@
  ******************************************************************************
  * @attention
  *
- * Copyright (c) 2025 GMaster
+ * Copyright (c) 2026 GMaster
  * All rights reserved.
  *
  ******************************************************************************
@@ -50,7 +50,7 @@ private:
     fp32 m_pitchTargetAngle;
 
     // 遥控器
-    Dr16RemoteControl m_remoteControl;
+    DR16RemoteControl m_remoteControl;
 
     // 标志位
     bool m_isInitComplete;

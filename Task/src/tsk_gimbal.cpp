@@ -5,7 +5,7 @@
  ******************************************************************************
  * @attention
  *
- * Copyright (c) 2025 GMaster
+ * Copyright (c) 2026 GMaster
  * All rights reserved.
  *
  ******************************************************************************
@@ -131,6 +131,7 @@ extern "C" void gimbal_task(void *argument)
             pitchPID.getOuterLoop().pidSetParam(pitchOuterParam);
         });
     pitchMotor.setControllerOutputPolarity(true); // 设置Pitch电机控制器输出极性为正（根据实际情况调整）
+    yawMotor.setControllerOutputPolarity(true);   // 设置Yaw电机控制器输出极性为正（根据实际情况调整）
     while (1) {
         gimbal.controlLoop();
         vofa.writeData(pitchPID.getOuterLoop().pidGetData().output);
