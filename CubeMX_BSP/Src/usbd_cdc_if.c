@@ -94,7 +94,7 @@ uint8_t UserRxBufferFS[APP_RX_DATA_SIZE];
 uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
-
+usbRxMsgT usbRxMsg; // the global variable to store the message received from USBMsgT
 /* USER CODE END PRIVATE_VARIABLES */
 
 /**
@@ -263,6 +263,10 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
   /* USER CODE BEGIN 6 */
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+    // handel the received data, and copy the data to the global variable `usbRxMsg` if the data is valid
+    if (Buf[0] == USB_RX_MSG_HEADER && *Len == sizeof(usbRxMsgT)) {
+        memcpy(&usbRxMsg, Buf, sizeof(usbRxMsgT)); // copy the data to the global variable
+    }
   return (USBD_OK);
   /* USER CODE END 6 */
 }

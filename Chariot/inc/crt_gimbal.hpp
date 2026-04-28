@@ -49,6 +49,12 @@ private:
     fp32 m_yawTargetAngle;
     fp32 m_pitchTargetAngle;
 
+    // usb 发送数据相关字段
+    static constexpr uint32_t m_usbTxBufSize = 64;   // the length of send buffer
+    uint8_t m_usbTxBuf[m_usbTxBufSize]       = {};   // the send array
+    uint8_t m_usbTxSOF                       = 0x3A; // the head of send array
+    uint8_t m_usbTxEOF                       = 0xAA;
+
     // 遥控器
     DR16RemoteControl m_remoteControl;
 
@@ -69,6 +75,7 @@ private:
     void pitchControl();
     void yawControl();
     void transmitGimbalMotorData();
+    uint8_t transmitGimbalMotorDataViaUsb();
 
     inline void setPitchAngle(const fp32 &targetAngle);
     inline void setYawAngle(const fp32 &targetAngle);

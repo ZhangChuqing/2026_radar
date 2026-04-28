@@ -53,6 +53,18 @@
 #define APP_TX_DATA_SIZE  2048
 /* USER CODE BEGIN EXPORTED_DEFINES */
 
+// define the data structure of the message received from USB (from InfantryDL) 
+const static uint8_t USB_RX_MSG_HEADER = 0xA3; // the header of the message from InfantryDL, used for data validation
+typedef struct  {
+    uint8_t header;  // 0xA3 for InfantryDL
+    float pitch;
+    float yaw;
+    uint8_t found;
+    uint8_t shoot_or_not;
+} __attribute__((packed)) usbRxMsgT;
+
+extern usbRxMsgT usbRxMsg; // export the msg instance
+
 /* USER CODE END EXPORTED_DEFINES */
 
 /**

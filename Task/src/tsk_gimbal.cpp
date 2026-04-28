@@ -12,6 +12,7 @@
  */
 /* Includes ------------------------------------------------------------------*/
 #include "crt_gimbal.hpp"
+#include "usb_device.h"
 
 /* Define --------------------------------------------------------------------*/
 /******************************************************************************
@@ -86,6 +87,7 @@ Gimbal gimbal(&yawMotor, &pitchMotor, &imu);
 
 extern "C" void gimbal_task(void *argument)
 {
+    MX_USB_DEVICE_Init();
     TickType_t taskLastWakeTime = xTaskGetTickCount(); // 获取任务开始时间
     gimbal.init();
             vofa.AddParameterListener("IP", [](fp32 *newdata) { 
