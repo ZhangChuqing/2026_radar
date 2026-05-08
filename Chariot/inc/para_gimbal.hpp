@@ -21,11 +21,11 @@
  *                            PID参数
  ******************************************************************************/
 // 云台Yaw电机
-#define YAW_OUTER_KP                  1.7f
-#define YAW_OUTER_KI                  0.0f
-#define YAW_OUTER_KD                  0.05f
+#define YAW_OUTER_KP                  1.75f
+#define YAW_OUTER_KI                  0.01f
+#define YAW_OUTER_KD                  0.0001f
 #define YAW_OUTER_OUT_LIMIT           1.0f
-#define YAW_OUTER_IOUT_LIMIT          0.0f
+#define YAW_OUTER_IOUT_LIMIT          0.1f
 #define YAW_INNER_KP                  2.24f
 #define YAW_INNER_KI                  0.0f
 #define YAW_INNER_KD                  0.02f
@@ -33,14 +33,14 @@
 #define YAW_INNER_IOUT_LIMIT          0.0f
 #define YAW_INNER_LOWPASS_FILTER_PARA 1.0f
 // 云台Pitch电机
-#define PITCH_OUTER_KP                  1.75f // 外环
-#define PITCH_OUTER_KI                  0.0f
-#define PITCH_OUTER_KD                  0.0f
+#define PITCH_OUTER_KP                  2.1f // 外环
+#define PITCH_OUTER_KI                  0.008f
+#define PITCH_OUTER_KD                  0.0001f
 #define PITCH_OUTER_OUT_LIMIT           1.0f
-#define PITCH_OUTER_IOUT_LIMIT          0.0f
-#define PITCH_INNER_KP                  1.3f // 内环
+#define PITCH_OUTER_IOUT_LIMIT          0.5f
+#define PITCH_INNER_KP                  1.25f // 内环
 #define PITCH_INNER_KI                  0.0f
-#define PITCH_INNER_KD                  0.15f
+#define PITCH_INNER_KD                  0.05f
 #define PITCH_INNER_OUT_LIMIT           10.0f
 #define PITCH_INNER_IOUT_LIMIT          0.0f
 #define PITCH_INNER_LOWPASS_FILTER_PARA 1.0f
